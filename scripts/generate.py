@@ -3,10 +3,9 @@ import json
 import base64
 import requests
 import anthropic
-from datetime import datetime
 
 # ── Config ────────────────────────────────────────────────────────────────────
-REPO          = os.environ["REPO"]                  # e.g. MellitiYassine/job-template
+REPO          = os.environ["REPO"]
 GH_TOKEN      = os.environ["GH_TOKEN"]
 ANTHROPIC_KEY = os.environ["ANTHROPIC_API_KEY"]
 JOBS_FILE     = "jobs.txt"
@@ -36,7 +35,6 @@ def gh_post(path, payload):
     return r.json()
 
 def get_file_content(path, ref="main"):
-    """Return (content_str, sha) for a file in the repo."""
     data = gh_get(f"/repos/{REPO}/contents/{path}?ref={ref}")
     content = base64.b64decode(data["content"]).decode()
     return content, data["sha"]
@@ -58,7 +56,7 @@ def create_branch(branch_name, from_ref="main"):
         "ref": f"refs/heads/{branch_name}",
         "sha": sha,
     })
-    print(f"✅ Created branch: {branch_name}")
+    print(f"Created branch: {branch_name}")
 
 # ── Job picking ────────────────────────────────────────────────────────────────
 
@@ -76,13 +74,13 @@ def pick_next_job():
         if job.lower() not in done_jobs:
             return job
 
-    print("🎉 All jobs have been processed!")
+    print("All jobs have been processed!")
     return None
 
 # ── Claude code generation ─────────────────────────────────────────────────────
 
-SYSTEM_PROMPT = """You are an expert Angular 17 developer. 
-When given a job name, you return ONLY a valid JSON object (no markdown, no explanation) with this exact shape:
+SYSTEM_PROMPT = """You are an expert Angular 17 developer.
+When given a job name, return ONLY a valid JSON object with this exact shape:
 
 {
   "files": [
@@ -91,45 +89,69 @@ When given a job name, you return ONLY a valid JSON object (no markdown, no expl
   ]
 }
 
-Rules:
-- Use Angular 17 standalone components
-- Use Three.js for 3D visuals
-- Each component has exactly 3 files: .html, .scss, .ts (no .spec.ts)
-- Include app.component.html, app.component.scss, app.component.ts
-- Include app.config.ts and main.ts
-- Include a basic angular.json, package.json, tsconfig.json, tsconfig.app.json
-- Do NOT add any comments to the code
-- Return ONLY the JSON object, nothing else
+Strict rules:
+- Angular 17 standalone components
+- Three.js loaded via CDN script tag in index.html (do NOT install via npm)
+- Each component: exactly 3 files (.html, .scss, .ts) — no .spec.ts files
+- Required files: app.component.html, app.component.scss, app.component.ts, app.config.ts, main.ts, index.html
+- Required config: angular.json, package.json, tsconfig.json, tsconfig.app.json
+- Keep file content SHORT and functional — avoid verbose boilerplate
+- No comments anywhere in the code
+- Return ONLY the raw JSON object — no markdown, no backticks, no explanation
 """
+
+def safe_parse_json(raw):
+    raw = raw.strip()
+
+    # Strip markdown fences if present
+    if raw.startswith("```"):
+        lines = raw.split("\n")
+        lines = [l for l in lines if not l.strip().startswith("```")]
+        raw = "\n".join(lines).strip()
+
+    # Strategy 1: direct parse
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError as e:
+        print(f"   Direct parse failed: {e}")
+
+    # Strategy 2: find last complete file object and close the JSON
+    try:
+        last_good = raw.rfind('"}')
+        if last_good != -1:
+            truncated = raw[:last_good + 2] + "\n  ]\n}"
+            return json.loads(truncated)
+    except (json.JSONDecodeError, ValueError) as e:
+        print(f"   Truncation recovery failed: {e}")
+
+    raise ValueError(f"Could not parse Claude response as JSON. First 500 chars:\n{raw[:500]}")
 
 def generate_template(job_name):
     client = anthropic.Anthropic(api_key=ANTHROPIC_KEY)
 
     prompt = (
-        f'I want to create a website template for "{job_name}" using Angular 17 and Three.js. '
-        f"It must have 3 files per component (html, scss, ts — no spec.ts files), "
-        f"plus app component files. No comments in code. "
-        f"Return the complete project as a JSON object with a 'files' array."
+        f'Create a website template for "{job_name}" using Angular 17 and Three.js (CDN). '
+        f"3 files per component (html, scss, ts). No spec files. No comments. "
+        f"Include all required Angular files. Keep content concise. "
+        f"Return ONLY the raw JSON object."
     )
 
-    print(f"🤖 Calling Claude for: {job_name}")
+    print(f"Calling Claude API for: {job_name}")
     message = client.messages.create(
-        model="claude-opus-4-5",
-        max_tokens=8000,
+        model="claude-sonnet-4-5",
+        max_tokens=16000,
         system=SYSTEM_PROMPT,
         messages=[{"role": "user", "content": prompt}],
     )
 
+    stop_reason = message.stop_reason
     raw = message.content[0].text.strip()
+    print(f"   Stop reason: {stop_reason} | Response length: {len(raw)} chars")
 
-    # Strip markdown fences if Claude added them
-    if raw.startswith("```"):
-        raw = raw.split("```")[1]
-        if raw.startswith("json"):
-            raw = raw[4:]
-    raw = raw.strip()
+    if stop_reason == "max_tokens":
+        print("   Warning: response was cut off, attempting recovery...")
 
-    data = json.loads(raw)
+    data = safe_parse_json(raw)
     return data["files"]
 
 # ── Push files to GitHub ───────────────────────────────────────────────────────
@@ -138,7 +160,6 @@ def push_files_to_branch(files, job_name, branch_name):
     for f in files:
         path = f["path"]
         content = f["content"]
-        # Check if file already exists on branch (to get sha for update)
         try:
             _, sha = get_file_content(path, ref=branch_name)
         except Exception:
@@ -150,7 +171,7 @@ def push_files_to_branch(files, job_name, branch_name):
             branch=branch_name,
             sha=sha,
         )
-        print(f"  📄 Pushed: {path}")
+        print(f"  Pushed: {path}")
 
 def mark_job_done(job_name):
     try:
@@ -167,7 +188,7 @@ def mark_job_done(job_name):
         branch="main",
         sha=sha,
     )
-    print(f"✅ Marked as done: {job_name}")
+    print(f"Marked as done: {job_name}")
 
 # ── Main ───────────────────────────────────────────────────────────────────────
 
@@ -176,29 +197,23 @@ def main():
     if not job_name:
         return
 
-    print(f"🚀 Processing job: {job_name}")
+    print(f"Processing job: {job_name}")
 
-    # Sanitize branch name
     branch_name = "template/" + job_name.lower().replace(" ", "-").replace("/", "-")
 
-    # Create branch
     create_branch(branch_name)
 
-    # Generate files via Claude
     files = generate_template(job_name)
-    print(f"📦 Claude returned {len(files)} files")
+    print(f"Claude returned {len(files)} files")
 
-    # Push all files
     push_files_to_branch(files, job_name, branch_name)
 
-    # Mark job as done
     mark_job_done(job_name)
 
-    # Export branch name for Vercel deploy step
     with open(os.environ.get("GITHUB_ENV", "/dev/null"), "a") as f:
         f.write(f"BRANCH_NAME={branch_name}\n")
 
-    print(f"\n✅ Done! Branch ready: {branch_name}")
+    print(f"\nDone! Branch ready: {branch_name}")
 
 if __name__ == "__main__":
     main()
