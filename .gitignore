@@ -1,2 +1,5 @@
 .vercel
-.env*.local
+.env.local
+.angular
+node_modules
+package-lock.json
