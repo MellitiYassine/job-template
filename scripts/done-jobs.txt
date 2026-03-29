@@ -3,3 +3,4 @@ Software Developer
 Web Developer
 Mobile App Developer
 Data Scientist
+Data Analyst
