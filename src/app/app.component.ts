@@ -7,14 +7,16 @@ import { Component, AfterViewInit, ViewChild, ElementRef } from '@angular/core';
   styleUrl: './app.component.scss'
 })
 export class AppComponent implements AfterViewInit {
-  @ViewChild('canvas', { static: false }) canvasRef!: ElementRef<HTMLCanvasElement>;
+  @ViewChild('canvas', { static: true }) canvasRef!: ElementRef<HTMLCanvasElement>;
 
-  private scene: any;
-  private camera: any;
-  private renderer: any;
+  private THREE = (window as any).THREE;
+  private scene!: any;
+  private camera!: any;
+  private renderer!: any;
+  private bars: any[] = [];
+  private particles: any[] = [];
   private dataPoints: any[] = [];
-  private charts: any[] = [];
-  private lines: any[] = [];
+  private time = 0;
 
   ngAfterViewInit(): void {
     this.initThree();
@@ -23,190 +25,167 @@ export class AppComponent implements AfterViewInit {
   }
 
   private initThree(): void {
-    const THREE = (window as any).THREE;
     const canvas = this.canvasRef.nativeElement;
+    this.scene = new this.THREE.Scene();
+    this.scene.fog = new this.THREE.Fog(0x0a0a1a, 10, 50);
 
-    this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x0a0e27);
-    this.scene.fog = new THREE.Fog(0x0a0e27, 10, 50);
-
-    this.camera = new THREE.PerspectiveCamera(
+    this.camera = new this.THREE.PerspectiveCamera(
       75,
       window.innerWidth / window.innerHeight,
       0.1,
       1000
     );
-    this.camera.position.set(0, 5, 15);
+    this.camera.position.set(0, 8, 20);
     this.camera.lookAt(0, 0, 0);
 
-    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    this.renderer = new this.THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.setPixelRatio(window.devicePixelRatio);
+    this.renderer.setClearColor(0x0a0a1a, 1);
 
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
+    const ambientLight = new this.THREE.AmbientLight(0xffffff, 0.3);
     this.scene.add(ambientLight);
 
-    const pointLight1 = new THREE.PointLight(0x00ff88, 1.5, 50);
-    pointLight1.position.set(10, 10, 10);
+    const directionalLight = new this.THREE.DirectionalLight(0x00ffff, 1);
+    directionalLight.position.set(10, 10, 10);
+    this.scene.add(directionalLight);
+
+    const pointLight1 = new this.THREE.PointLight(0xff00ff, 1, 50);
+    pointLight1.position.set(-10, 5, -10);
     this.scene.add(pointLight1);
 
-    const pointLight2 = new THREE.PointLight(0xff0088, 1.5, 50);
-    pointLight2.position.set(-10, -10, 10);
+    const pointLight2 = new this.THREE.PointLight(0x00ff88, 1, 50);
+    pointLight2.position.set(10, -5, 10);
     this.scene.add(pointLight2);
-
-    const pointLight3 = new THREE.PointLight(0x0088ff, 1.5, 50);
-    pointLight3.position.set(0, 10, -10);
-    this.scene.add(pointLight3);
 
     window.addEventListener('resize', () => this.onWindowResize());
   }
 
   private createDataVisualization(): void {
-    const THREE = (window as any).THREE;
+    const barCount = 20;
+    const radius = 12;
 
-    for (let i = 0; i < 300; i++) {
-      const geometry = new THREE.SphereGeometry(0.05, 8, 8);
-      const material = new THREE.MeshPhongMaterial({
-        color: new THREE.Color().setHSL(Math.random(), 0.7, 0.5),
-        emissive: new THREE.Color().setHSL(Math.random(), 0.5, 0.2),
-        transparent: true,
-        opacity: 0.8
+    for (let i = 0; i < barCount; i++) {
+      const angle = (i / barCount) * Math.PI * 2;
+      const height = Math.random() * 5 + 1;
+      
+      const geometry = new this.THREE.BoxGeometry(0.8, height, 0.8);
+      const material = new this.THREE.MeshStandardMaterial({
+        color: new this.THREE.Color().setHSL(i / barCount, 0.8, 0.5),
+        emissive: new this.THREE.Color().setHSL(i / barCount, 0.8, 0.3),
+        metalness: 0.7,
+        roughness: 0.3
       });
-      const sphere = new THREE.Mesh(geometry, material);
       
-      const radius = 5 + Math.random() * 8;
-      const theta = Math.random() * Math.PI * 2;
-      const phi = Math.random() * Math.PI;
+      const bar = new this.THREE.Mesh(geometry, material);
+      bar.position.x = Math.cos(angle) * radius;
+      bar.position.z = Math.sin(angle) * radius;
+      bar.position.y = height / 2;
       
-      sphere.position.x = radius * Math.sin(phi) * Math.cos(theta);
-      sphere.position.y = radius * Math.sin(phi) * Math.sin(theta);
-      sphere.position.z = radius * Math.cos(phi);
+      bar.userData = {
+        targetHeight: height,
+        baseHeight: height,
+        angle: angle,
+        speed: Math.random() * 0.02 + 0.01
+      };
+      
+      this.bars.push(bar);
+      this.scene.add(bar);
+    }
+
+    const particleCount = 500;
+    const particleGeometry = new this.THREE.BufferGeometry();
+    const positions = new Float32Array(particleCount * 3);
+    const colors = new Float32Array(particleCount * 3);
+
+    for (let i = 0; i < particleCount; i++) {
+      positions[i * 3] = (Math.random() - 0.5) * 40;
+      positions[i * 3 + 1] = (Math.random() - 0.5) * 40;
+      positions[i * 3 + 2] = (Math.random() - 0.5) * 40;
+
+      const color = new this.THREE.Color().setHSL(Math.random(), 0.8, 0.6);
+      colors[i * 3] = color.r;
+      colors[i * 3 + 1] = color.g;
+      colors[i * 3 + 2] = color.b;
+    }
+
+    particleGeometry.setAttribute('position', new this.THREE.BufferAttribute(positions, 3));
+    particleGeometry.setAttribute('color', new this.THREE.BufferAttribute(colors, 3));
+
+    const particleMaterial = new this.THREE.PointsMaterial({
+      size: 0.15,
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.8,
+      blending: this.THREE.AdditiveBlending
+    });
+
+    const particleSystem = new this.THREE.Points(particleGeometry, particleMaterial);
+    this.scene.add(particleSystem);
+    this.particles.push(particleSystem);
+
+    for (let i = 0; i < 50; i++) {
+      const sphereGeometry = new this.THREE.SphereGeometry(0.2, 16, 16);
+      const sphereMaterial = new this.THREE.MeshStandardMaterial({
+        color: new this.THREE.Color().setHSL(Math.random(), 0.8, 0.5),
+        emissive: new this.THREE.Color().setHSL(Math.random(), 0.8, 0.4),
+        metalness: 0.8,
+        roughness: 0.2
+      });
+      
+      const sphere = new this.THREE.Mesh(sphereGeometry, sphereMaterial);
+      sphere.position.set(
+        (Math.random() - 0.5) * 30,
+        (Math.random() - 0.5) * 20,
+        (Math.random() - 0.5) * 30
+      );
       
       sphere.userData = {
-        velocity: new THREE.Vector3(
-          (Math.random() - 0.5) * 0.02,
-          (Math.random() - 0.5) * 0.02,
-          (Math.random() - 0.5) * 0.02
-        ),
-        originalColor: material.color.clone()
+        velocity: new this.THREE.Vector3(
+          (Math.random() - 0.5) * 0.05,
+          (Math.random() - 0.5) * 0.05,
+          (Math.random() - 0.5) * 0.05
+        )
       };
       
       this.dataPoints.push(sphere);
       this.scene.add(sphere);
     }
 
-    for (let i = 0; i < 50; i++) {
-      const start = this.dataPoints[Math.floor(Math.random() * this.dataPoints.length)];
-      const end = this.dataPoints[Math.floor(Math.random() * this.dataPoints.length)];
-      
-      if (start !== end) {
-        const points = [start.position, end.position];
-        const geometry = new THREE.BufferGeometry().setFromPoints(points);
-        const material = new THREE.LineBasicMaterial({
-          color: 0x00ffff,
-          transparent: true,
-          opacity: 0.2
-        });
-        const line = new THREE.Line(geometry, material);
-        this.lines.push({ line, start, end });
-        this.scene.add(line);
-      }
-    }
-
-    const barCount = 8;
-    const barSpacing = 2;
-    for (let i = 0; i < barCount; i++) {
-      const height = 1 + Math.random() * 3;
-      const geometry = new THREE.BoxGeometry(0.3, height, 0.3);
-      const material = new THREE.MeshPhongMaterial({
-        color: new THREE.Color().setHSL(i / barCount, 0.8, 0.5),
-        transparent: true,
-        opacity: 0.7
-      });
-      const bar = new THREE.Mesh(geometry, material);
-      bar.position.set((i - barCount / 2) * barSpacing, height / 2, -5);
-      bar.userData = { targetHeight: height, currentHeight: height, speed: 0.02 };
-      this.charts.push(bar);
-      this.scene.add(bar);
-    }
-
-    const particleCount = 1000;
-    const positions = new Float32Array(particleCount * 3);
-    const colors = new Float32Array(particleCount * 3);
-    
-    for (let i = 0; i < particleCount; i++) {
-      positions[i * 3] = (Math.random() - 0.5) * 50;
-      positions[i * 3 + 1] = (Math.random() - 0.5) * 50;
-      positions[i * 3 + 2] = (Math.random() - 0.5) * 50;
-      
-      const color = new THREE.Color().setHSL(Math.random(), 0.8, 0.6);
-      colors[i * 3] = color.r;
-      colors[i * 3 + 1] = color.g;
-      colors[i * 3 + 2] = color.b;
-    }
-    
-    const particleGeometry = new THREE.BufferGeometry();
-    particleGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    particleGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-    
-    const particleMaterial = new THREE.PointsMaterial({
-      size: 0.05,
-      vertexColors: true,
-      transparent: true,
-      opacity: 0.6,
-      blending: THREE.AdditiveBlending
-    });
-    
-    const particles = new THREE.Points(particleGeometry, particleMaterial);
-    this.scene.add(particles);
+    const gridHelper = new this.THREE.GridHelper(40, 40, 0x00ffff, 0x004444);
+    gridHelper.position.y = -0.5;
+    this.scene.add(gridHelper);
   }
 
   private animate(): void {
     requestAnimationFrame(() => this.animate());
+    this.time += 0.01;
 
-    const THREE = (window as any).THREE;
-    const time = Date.now() * 0.001;
+    this.bars.forEach((bar, index) => {
+      const newHeight = bar.userData.baseHeight + Math.sin(this.time * bar.userData.speed + index) * 2;
+      bar.scale.y = newHeight / bar.userData.baseHeight;
+      bar.position.y = (newHeight * bar.userData.baseHeight) / 2;
+      bar.rotation.y += 0.01;
+    });
 
-    this.dataPoints.forEach((point, index) => {
+    this.particles.forEach(particleSystem => {
+      particleSystem.rotation.y += 0.001;
+      particleSystem.rotation.x += 0.0005;
+    });
+
+    this.dataPoints.forEach(point => {
       point.position.add(point.userData.velocity);
       
-      const distance = point.position.length();
-      if (distance > 15 || distance < 3) {
-        point.userData.velocity.multiplyScalar(-1);
-      }
+      if (Math.abs(point.position.x) > 15) point.userData.velocity.x *= -1;
+      if (Math.abs(point.position.y) > 10) point.userData.velocity.y *= -1;
+      if (Math.abs(point.position.z) > 15) point.userData.velocity.z *= -1;
       
-      point.material.emissive.setHSL((time * 0.1 + index * 0.01) % 1, 0.5, 0.3);
-      point.rotation.x += 0.01;
-      point.rotation.y += 0.01;
+      point.rotation.x += 0.02;
+      point.rotation.y += 0.02;
     });
 
-    this.lines.forEach(({ line, start, end }) => {
-      const positions = line.geometry.attributes.position.array;
-      positions[0] = start.position.x;
-      positions[1] = start.position.y;
-      positions[2] = start.position.z;
-      positions[3] = end.position.x;
-      positions[4] = end.position.y;
-      positions[5] = end.position.z;
-      line.geometry.attributes.position.needsUpdate = true;
-    });
-
-    this.charts.forEach((bar, index) => {
-      if (Math.random() < 0.01) {
-        bar.userData.targetHeight = 1 + Math.random() * 3;
-      }
-      
-      const diff = bar.userData.targetHeight - bar.userData.currentHeight;
-      bar.userData.currentHeight += diff * bar.userData.speed;
-      
-      bar.scale.y = bar.userData.currentHeight / bar.userData.targetHeight;
-      bar.position.y = bar.userData.currentHeight / 2;
-      bar.rotation.y = Math.sin(time + index) * 0.1;
-    });
-
-    this.camera.position.x = Math.sin(time * 0.2) * 15;
-    this.camera.position.z = Math.cos(time * 0.2) * 15;
-    this.camera.position.y = 5 + Math.sin(time * 0.3) * 2;
+    this.camera.position.x = Math.sin(this.time * 0.1) * 25;
+    this.camera.position.z = Math.cos(this.time * 0.1) * 25;
     this.camera.lookAt(0, 0, 0);
 
     this.renderer.render(this.scene, this.camera);
