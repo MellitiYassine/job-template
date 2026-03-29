@@ -1,2 +1,1 @@
-# This file tracks which jobs have already been processed.
-# Do not edit manually — it is updated automatically by the GitHub Action.
+# Auto-updated by GitHub Actions. Do not edit manually.
