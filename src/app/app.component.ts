@@ -7,214 +7,185 @@ import { Component, AfterViewInit, ViewChild, ElementRef } from '@angular/core';
   styleUrl: './app.component.scss'
 })
 export class AppComponent implements AfterViewInit {
-  @ViewChild('canvas', { static: true }) canvasRef!: ElementRef<HTMLCanvasElement>;
+  @ViewChild('canvas', { static: false }) canvasRef!: ElementRef<HTMLCanvasElement>;
 
-  private scene!: any;
-  private camera!: any;
-  private renderer!: any;
+  private scene: any;
+  private camera: any;
+  private renderer: any;
   private particles: any[] = [];
   private servers: any[] = [];
   private connections: any[] = [];
-  private time = 0;
+  private pipeline: any;
 
   ngAfterViewInit(): void {
-    this.initThree();
+    this.initThreeJS();
     this.createScene();
     this.animate();
-    window.addEventListener('resize', () => this.onResize());
   }
 
-  private initThree(): void {
+  private initThreeJS(): void {
     const THREE = (window as any).THREE;
     const canvas = this.canvasRef.nativeElement;
-    
+
     this.scene = new THREE.Scene();
-    this.scene.fog = new THREE.Fog(0x0a0a1a, 10, 50);
-    
+    this.scene.background = new THREE.Color(0x0a0e27);
+    this.scene.fog = new THREE.Fog(0x0a0e27, 10, 50);
+
     this.camera = new THREE.PerspectiveCamera(
       75,
       window.innerWidth / window.innerHeight,
       0.1,
       1000
     );
-    this.camera.position.z = 25;
+    this.camera.position.z = 15;
     this.camera.position.y = 5;
-    
-    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+
+    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
     this.renderer.setSize(window.innerWidth, window.innerHeight);
-    this.renderer.setClearColor(0x0a0a1a, 1);
+    this.renderer.setPixelRatio(window.devicePixelRatio);
+
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
+    this.scene.add(ambientLight);
+
+    const pointLight1 = new THREE.PointLight(0x00ff88, 1, 100);
+    pointLight1.position.set(10, 10, 10);
+    this.scene.add(pointLight1);
+
+    const pointLight2 = new THREE.PointLight(0x0088ff, 1, 100);
+    pointLight2.position.set(-10, -10, 5);
+    this.scene.add(pointLight2);
+
+    window.addEventListener('resize', () => this.onWindowResize());
   }
 
   private createScene(): void {
     const THREE = (window as any).THREE;
-    
-    const ambientLight = new THREE.AmbientLight(0x404060, 0.5);
-    this.scene.add(ambientLight);
-    
-    const pointLight1 = new THREE.PointLight(0x00ff88, 1, 50);
-    pointLight1.position.set(10, 10, 10);
-    this.scene.add(pointLight1);
-    
-    const pointLight2 = new THREE.PointLight(0x0088ff, 1, 50);
-    pointLight2.position.set(-10, -10, -10);
-    this.scene.add(pointLight2);
-    
-    this.createServerNodes();
-    this.createParticleSystem();
-    this.createConnectionLines();
-    this.createFloatingIcons();
-  }
 
-  private createServerNodes(): void {
-    const THREE = (window as any).THREE;
-    const positions = [
-      { x: -8, y: 4, z: -5 },
-      { x: 8, y: 4, z: -5 },
-      { x: -8, y: -4, z: -5 },
-      { x: 8, y: -4, z: -5 },
-      { x: 0, y: 0, z: -8 }
-    ];
-    
-    positions.forEach((pos, i) => {
-      const geometry = new THREE.BoxGeometry(2, 2.5, 1.5);
-      const material = new THREE.MeshPhongMaterial({
-        color: i === 4 ? 0x00ff88 : 0x0088ff,
-        emissive: i === 4 ? 0x00ff88 : 0x0088ff,
-        emissiveIntensity: 0.3,
-        shininess: 100
-      });
-      const server = new THREE.Mesh(geometry, material);
-      server.position.set(pos.x, pos.y, pos.z);
-      
-      const edges = new THREE.EdgesGeometry(geometry);
-      const lineMaterial = new THREE.LineBasicMaterial({ color: 0x00ffff, linewidth: 2 });
-      const wireframe = new THREE.LineSegments(edges, lineMaterial);
-      server.add(wireframe);
-      
+    const serverGeometry = new THREE.BoxGeometry(1.5, 2, 0.8);
+    const serverMaterial = new THREE.MeshPhongMaterial({
+      color: 0x1a1a2e,
+      emissive: 0x00ff88,
+      emissiveIntensity: 0.2,
+      shininess: 100
+    });
+
+    for (let i = 0; i < 8; i++) {
+      const server = new THREE.Mesh(serverGeometry, serverMaterial.clone());
+      const angle = (i / 8) * Math.PI * 2;
+      const radius = 8;
+      server.position.x = Math.cos(angle) * radius;
+      server.position.z = Math.sin(angle) * radius;
+      server.position.y = Math.sin(i * 0.5) * 2;
+      server.userData = { angle, radius, initialY: server.position.y };
       this.scene.add(server);
-      this.servers.push({ mesh: server, baseY: pos.y, phase: i * 0.5 });
-    });
-  }
+      this.servers.push(server);
 
-  private createParticleSystem(): void {
-    const THREE = (window as any).THREE;
-    const geometry = new THREE.BufferGeometry();
-    const particleCount = 1500;
-    const positions = new Float32Array(particleCount * 3);
-    
-    for (let i = 0; i < particleCount * 3; i += 3) {
-      positions[i] = (Math.random() - 0.5) * 60;
-      positions[i + 1] = (Math.random() - 0.5) * 60;
-      positions[i + 2] = (Math.random() - 0.5) * 60;
-    }
-    
-    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    
-    const material = new THREE.PointsMaterial({
-      color: 0x00ffff,
-      size: 0.1,
-      transparent: true,
-      opacity: 0.6,
-      blending: THREE.AdditiveBlending
-    });
-    
-    const particles = new THREE.Points(geometry, material);
-    this.scene.add(particles);
-    this.particles.push(particles);
-  }
+      const edgesGeometry = new THREE.EdgesGeometry(serverGeometry);
+      const edgesMaterial = new THREE.LineBasicMaterial({ color: 0x00ff88 });
+      const edges = new THREE.LineSegments(edgesGeometry, edgesMaterial);
+      server.add(edges);
 
-  private createConnectionLines(): void {
-    const THREE = (window as any).THREE;
-    
-    for (let i = 0; i < this.servers.length - 1; i++) {
-      for (let j = i + 1; j < this.servers.length; j++) {
-        const points = [
-          this.servers[i].mesh.position,
-          this.servers[j].mesh.position
-        ];
-        const geometry = new THREE.BufferGeometry().setFromPoints(points);
-        const material = new THREE.LineBasicMaterial({
-          color: 0x00ff88,
-          transparent: true,
-          opacity: 0.2
+      for (let j = 0; j < 3; j++) {
+        const lightGeometry = new THREE.PlaneGeometry(0.2, 0.2);
+        const lightMaterial = new THREE.MeshBasicMaterial({
+          color: Math.random() > 0.5 ? 0x00ff00 : 0xff0000,
+          side: THREE.DoubleSide
         });
-        const line = new THREE.Line(geometry, material);
-        this.scene.add(line);
-        this.connections.push({ line, material });
+        const light = new THREE.Mesh(lightGeometry, lightMaterial);
+        light.position.set(-0.5, 0.5 - j * 0.4, 0.41);
+        server.add(light);
       }
     }
-  }
 
-  private createFloatingIcons(): void {
-    const THREE = (window as any).THREE;
-    const iconCount = 20;
-    
-    for (let i = 0; i < iconCount; i++) {
-      const geometry = new THREE.OctahedronGeometry(0.3);
-      const material = new THREE.MeshPhongMaterial({
-        color: Math.random() > 0.5 ? 0xff6600 : 0x00ff88,
-        emissive: Math.random() > 0.5 ? 0xff6600 : 0x00ff88,
-        emissiveIntensity: 0.5,
-        transparent: true,
-        opacity: 0.8
+    const particlesGeometry = new THREE.BufferGeometry();
+    const particlesCount = 1000;
+    const positions = new Float32Array(particlesCount * 3);
+
+    for (let i = 0; i < particlesCount * 3; i++) {
+      positions[i] = (Math.random() - 0.5) * 50;
+    }
+
+    particlesGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    const particlesMaterial = new THREE.PointsMaterial({
+      color: 0x00ff88,
+      size: 0.05,
+      transparent: true,
+      opacity: 0.6
+    });
+
+    const particleSystem = new THREE.Points(particlesGeometry, particlesMaterial);
+    this.scene.add(particleSystem);
+    this.particles.push(particleSystem);
+
+    const pipelineGeometry = new THREE.CylinderGeometry(0.1, 0.1, 20, 32);
+    const pipelineMaterial = new THREE.MeshPhongMaterial({
+      color: 0x0088ff,
+      emissive: 0x0088ff,
+      emissiveIntensity: 0.3,
+      transparent: true,
+      opacity: 0.7
+    });
+    this.pipeline = new THREE.Mesh(pipelineGeometry, pipelineMaterial);
+    this.pipeline.rotation.z = Math.PI / 2;
+    this.pipeline.position.y = -3;
+    this.scene.add(this.pipeline);
+
+    for (let i = 0; i < 5; i++) {
+      const dataPacketGeometry = new THREE.OctahedronGeometry(0.3);
+      const dataPacketMaterial = new THREE.MeshPhongMaterial({
+        color: 0xffaa00,
+        emissive: 0xffaa00,
+        emissiveIntensity: 0.5
       });
-      const icon = new THREE.Mesh(geometry, material);
-      
-      icon.position.set(
-        (Math.random() - 0.5) * 30,
-        (Math.random() - 0.5) * 20,
-        (Math.random() - 0.5) * 20
-      );
-      
-      this.scene.add(icon);
-      this.particles.push({
-        mesh: icon,
-        velocity: {
-          x: (Math.random() - 0.5) * 0.02,
-          y: (Math.random() - 0.5) * 0.02,
-          z: (Math.random() - 0.5) * 0.02
-        }
-      });
+      const dataPacket = new THREE.Mesh(dataPacketGeometry, dataPacketMaterial);
+      dataPacket.position.x = -10 + i * 4;
+      dataPacket.position.y = -3;
+      dataPacket.userData = { speed: 0.05 + Math.random() * 0.05 };
+      this.scene.add(dataPacket);
+      this.connections.push(dataPacket);
     }
   }
 
   private animate(): void {
     requestAnimationFrame(() => this.animate());
-    this.time += 0.01;
-    
-    this.servers.forEach((server) => {
-      server.mesh.rotation.y += 0.005;
-      server.mesh.position.y = server.baseY + Math.sin(this.time + server.phase) * 0.5;
+
+    const time = Date.now() * 0.001;
+
+    this.servers.forEach((server, i) => {
+      server.rotation.y += 0.01;
+      server.position.y = server.userData.initialY + Math.sin(time + i) * 0.5;
+      
+      const angle = server.userData.angle + time * 0.1;
+      server.position.x = Math.cos(angle) * server.userData.radius;
+      server.position.z = Math.sin(angle) * server.userData.radius;
     });
-    
-    this.particles.forEach((particle, index) => {
-      if (particle.mesh) {
-        particle.mesh.rotation.x += 0.02;
-        particle.mesh.rotation.y += 0.02;
-        particle.mesh.position.x += particle.velocity.x;
-        particle.mesh.position.y += particle.velocity.y;
-        particle.mesh.position.z += particle.velocity.z;
-        
-        if (Math.abs(particle.mesh.position.x) > 15) particle.velocity.x *= -1;
-        if (Math.abs(particle.mesh.position.y) > 10) particle.velocity.y *= -1;
-        if (Math.abs(particle.mesh.position.z) > 10) particle.velocity.z *= -1;
-      } else {
-        particle.rotation.y += 0.001;
+
+    this.particles.forEach(particle => {
+      particle.rotation.y += 0.0005;
+      particle.rotation.x += 0.0003;
+    });
+
+    this.connections.forEach(packet => {
+      packet.position.x += packet.userData.speed;
+      packet.rotation.x += 0.05;
+      packet.rotation.y += 0.03;
+      
+      if (packet.position.x > 10) {
+        packet.position.x = -10;
       }
     });
-    
-    this.connections.forEach((conn, i) => {
-      conn.material.opacity = 0.1 + Math.abs(Math.sin(this.time + i * 0.3)) * 0.3;
-    });
-    
-    this.camera.position.x = Math.sin(this.time * 0.2) * 2;
-    this.camera.position.y = 5 + Math.cos(this.time * 0.15) * 2;
-    this.camera.lookAt(0, 0, -5);
-    
+
+    if (this.pipeline) {
+      this.pipeline.rotation.x += 0.005;
+    }
+
+    this.camera.position.x = Math.sin(time * 0.1) * 2;
+    this.camera.lookAt(0, 0, 0);
+
     this.renderer.render(this.scene, this.camera);
   }
 
-  private onResize(): void {
+  private onWindowResize(): void {
     this.camera.aspect = window.innerWidth / window.innerHeight;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(window.innerWidth, window.innerHeight);
