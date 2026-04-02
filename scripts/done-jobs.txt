@@ -7,3 +7,4 @@ Data Analyst
 Machine Learning Engineer
 DevOps Engineer
 Cloud Engineer
+Cybersecurity Specialist
