@@ -9,3 +9,4 @@ DevOps Engineer
 Cloud Engineer
 Cybersecurity Specialist
 IT Consultant
+Product Manager
