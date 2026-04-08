@@ -13,3 +13,4 @@ Product Manager
 Project Manager
 Business Analyst
 UX Designer
+UI Designer
