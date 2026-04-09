@@ -14,3 +14,4 @@ Project Manager
 Business Analyst
 UX Designer
 UI Designer
+Graphic Designer
