@@ -16,3 +16,4 @@ UX Designer
 UI Designer
 Graphic Designer
 Motion Designer
+Animator
