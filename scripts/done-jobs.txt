@@ -20,3 +20,4 @@ Animator
 Video Editor
 Photographer
 Content Creator
+Copywriter
