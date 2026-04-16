@@ -21,3 +21,4 @@ Video Editor
 Photographer
 Content Creator
 Copywriter
+Technical Writer
