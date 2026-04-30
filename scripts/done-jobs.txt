@@ -35,3 +35,4 @@ Account Manager
 Customer Success Manager
 Recruiter
 HR Consultant
+Career Coach
