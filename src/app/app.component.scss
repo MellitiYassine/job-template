@@ -1,5 +1,239 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.container {
+  position: relative;
+  width: 100%;
+  min-height: 100vh;
+  overflow-x: hidden;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
 canvas {
-  display: block;
-  width: 100vw;
-  height: 100vh;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+.content {
+  position: relative;
+  z-index: 2;
+  color: white;
+  pointer-events: none;
+}
+
+.header {
+  text-align: center;
+  padding: 100px 20px 50px;
+  background: linear-gradient(180deg, rgba(10, 10, 26, 0.9) 0%, rgba(10, 10, 26, 0.3) 100%);
+}
+
+.title {
+  font-size: 4rem;
+  font-weight: 700;
+  margin-bottom: 20px;
+  background: linear-gradient(135deg, #4a90e2, #e24a90, #90e24a);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: glow 3s ease-in-out infinite;
+}
+
+@keyframes glow {
+  0%, 100% {
+    filter: drop-shadow(0 0 20px rgba(74, 144, 226, 0.5));
+  }
+  50% {
+    filter: drop-shadow(0 0 40px rgba(226, 74, 144, 0.8));
+  }
+}
+
+.subtitle {
+  font-size: 1.5rem;
+  opacity: 0.9;
+  letter-spacing: 2px;
+}
+
+.hero {
+  padding: 80px 20px;
+  text-align: center;
+  background: rgba(10, 10, 26, 0.6);
+  backdrop-filter: blur(10px);
+}
+
+.hero-content {
+  max-width: 800px;
+  margin: 0 auto;
+  pointer-events: all;
+}
+
+.hero-content h2 {
+  font-size: 2.5rem;
+  margin-bottom: 20px;
+  color: #4a90e2;
+}
+
+.hero-content p {
+  font-size: 1.2rem;
+  line-height: 1.8;
+  margin-bottom: 30px;
+  opacity: 0.9;
+}
+
+.cta-button {
+  padding: 18px 40px;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: white;
+  background: linear-gradient(135deg, #4a90e2, #e24a90);
+  border: none;
+  border-radius: 50px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 10px 30px rgba(74, 144, 226, 0.4);
+  pointer-events: all;
+}
+
+.cta-button:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 15px 40px rgba(226, 74, 144, 0.6);
+}
+
+.services {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 30px;
+  padding: 80px 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.service-card {
+  background: rgba(10, 10, 26, 0.8);
+  backdrop-filter: blur(10px);
+  border: 2px solid rgba(74, 144, 226, 0.3);
+  border-radius: 20px;
+  padding: 40px 30px;
+  text-align: center;
+  transition: all 0.3s ease;
+  pointer-events: all;
+}
+
+.service-card:hover {
+  transform: translateY(-10px);
+  border-color: rgba(226, 74, 144, 0.6);
+  box-shadow: 0 20px 40px rgba(74, 144, 226, 0.3);
+}
+
+.icon {
+  font-size: 3rem;
+  margin-bottom: 20px;
+}
+
+.service-card h3 {
+  font-size: 1.5rem;
+  margin-bottom: 15px;
+  color: #4a90e2;
+}
+
+.service-card p {
+  opacity: 0.8;
+  line-height: 1.6;
+}
+
+.testimonials {
+  padding: 80px 20px;
+  max-width: 900px;
+  margin: 0 auto;
+  text-align: center;
+  background: rgba(10, 10, 26, 0.7);
+  backdrop-filter: blur(10px);
+}
+
+.testimonials h2 {
+  font-size: 2.5rem;
+  margin-bottom: 50px;
+  color: #90e24a;
+}
+
+.testimonial {
+  background: rgba(255, 255, 255, 0.05);
+  border-left: 4px solid #e24a90;
+  padding: 30px;
+  margin-bottom: 30px;
+  border-radius: 10px;
+  text-align: left;
+}
+
+.testimonial p {
+  font-size: 1.1rem;
+  font-style: italic;
+  margin-bottom: 15px;
+  line-height: 1.8;
+}
+
+.testimonial span {
+  color: #4a90e2;
+  font-weight: 600;
+}
+
+.cta-section {
+  text-align: center;
+  padding: 100px 20px;
+  background: linear-gradient(180deg, rgba(10, 10, 26, 0.3) 0%, rgba(10, 10, 26, 0.9) 100%);
+}
+
+.cta-section h2 {
+  font-size: 2.5rem;
+  margin-bottom: 20px;
+  color: #90e24a;
+}
+
+.cta-section p {
+  font-size: 1.2rem;
+  margin-bottom: 30px;
+  opacity: 0.9;
+}
+
+.cta-button-secondary {
+  padding: 18px 40px;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: white;
+  background: linear-gradient(135deg, #90e24a, #4a90e2);
+  border: none;
+  border-radius: 50px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 10px 30px rgba(144, 226, 74, 0.4);
+  pointer-events: all;
+}
+
+.cta-button-secondary:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 15px 40px rgba(74, 144, 226, 0.6);
+}
+
+@media (max-width: 768px) {
+  .title {
+    font-size: 2.5rem;
+  }
+  
+  .subtitle {
+    font-size: 1.2rem;
+  }
+  
+  .hero-content h2 {
+    font-size: 1.8rem;
+  }
+  
+  .services {
+    grid-template-columns: 1fr;
+  }
 }
