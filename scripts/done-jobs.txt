@@ -42,3 +42,4 @@ Public Speaker
 Trainer
 Online Course Creator
 Educator
+Teacher
